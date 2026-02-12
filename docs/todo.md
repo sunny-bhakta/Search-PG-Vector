@@ -1,0 +1,31 @@
+- Spell correction
+- Synonyms dictionary
+- Multi-language search
+- Personalized ranking
+- A/B testing search relevance
+- Designed ranking and relevance system
+- Multi-language search
+- Hybrid score fusion query
+- Filter + sort query
+- Autocomplete query
+- Full-text ranking query
+- Business Ranking Layer
+- After relevance, apply:
+- In-stock boost
+- Rating boost
+- Price buckets
+- Sponsored products
+- EXPLAIN ANALYZE? → Raw SQL
+- faceting
+- query expansion
+- If zero results → trigram fallback
+- Suggest “Did you mean…”
+- tsvector → keyword relevance
+- pgvector → semantic meaning
+- pg_trgm → typo tolerance
+- Category-based synonyms
+- AI-generated synonyms
+- Search analytics → auto-suggest synonyms
+- Weighted synonym boosting
+- Relevance tuning strategy
+- How to make this portfolio-worthy
