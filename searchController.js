@@ -1,5 +1,5 @@
 import express from 'express';
-import { searchWithFilters, getFacetsWithFilters } from './searchService.js';
+import { searchWithFilters, getFacetsWithFilters, getAutocompleteSuggestions } from './searchService.js';
 
 const router = express.Router();
 
@@ -22,12 +22,18 @@ router.get('/search', async (req, res) => {
   const q = req.query.q || '';
   const filtersStr = req.query.filters || '';
 
+  const sort = req.query.sort || '';
+  const page = parseInt(req.query.page, 10) || 1;
+  const limit = parseInt(req.query.pageSize, 10) || 20; // pageSize maps to limit
+
   const filters = filtersStr.split(',').filter(Boolean).map(pair => {
     const [name, value] = pair.split(':');
     return { name, value };
   });
 
-  const results = await searchWithFilters(q, filters);
+  const pagination = { sort, page, limit };
+
+  const results = await searchWithFilters(q, filters, pagination);
   res.json(results);
 });
 
@@ -45,5 +51,17 @@ router.get('/facets', async (req, res) => {
   res.json(results);
 });
 
+router.get('/autocomplete', async (req, res) => {
+  const q = req.query.q || '';
+  const filtersStr = req.query.filters || '';
+
+  const filters = filtersStr.split(',').filter(Boolean).map(pair => {
+    const [name, value] = pair.split(':');
+    return { name, value };
+  });
+
+  const results = await getAutocompleteSuggestions(q, filters);
+  res.json(results);
+});
 
 export default router;
