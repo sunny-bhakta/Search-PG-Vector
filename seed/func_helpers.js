@@ -21,24 +21,35 @@ async function seedProducts() {
         tags TEXT[],
         min_price NUMERIC,
         max_price NUMERIC,
-        embedding VECTOR(768),         -- Updated for 768-dimension vectors
-        search_vector TSVECTOR,      -- For full-text search
+        embedding VECTOR(768),
+        search_vector TSVECTOR,
         in_stock BOOLEAN,
-        updated_at TIMESTAMP
+        updated_at TIMESTAMP,
+        rating NUMERIC,
+        is_sponsored BOOLEAN DEFAULT FALSE,
+        merch_priority INTEGER DEFAULT 0,
+        price_bucket TEXT,
+        sale_price NUMERIC,
+        sale_start TIMESTAMP,
+        sale_end TIMESTAMP,
+        is_pinned BOOLEAN DEFAULT FALSE,
+        pinned_rank INTEGER,
+        is_featured BOOLEAN DEFAULT FALSE
       )
     `);
     for (const product of products) {
         const embeddingArr = await embedText(`${product.name} ${product.description}`);
-        // Convert array to Postgres vector string: "[0.1,0.2,0.3]"
         const embedding = Array.isArray(embeddingArr)
             ? `[${embeddingArr.join(',')}]`
             : embeddingArr;
         await pool.query(
             `INSERT INTO products 
-        (id, name, description, brand, category_paths, tags, min_price, max_price, embedding, in_stock, updated_at, search_vector)
+        (id, name, description, brand, category_paths, tags, min_price, max_price, embedding, in_stock, updated_at, search_vector,
+         rating, is_sponsored, merch_priority, price_bucket, sale_price, sale_start, sale_end, is_pinned, pinned_rank, is_featured)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
          setweight(to_tsvector('english', coalesce($2, '')), 'A') ||
-         setweight(to_tsvector('english', coalesce($3, '')), 'B')
+         setweight(to_tsvector('english', coalesce($3, '')), 'B'),
+         $12, $13, $14, $15, $16, $17, $18, $19, $20, $21
        )
        ON CONFLICT (id) DO UPDATE SET
          name = EXCLUDED.name,
@@ -52,7 +63,17 @@ async function seedProducts() {
          in_stock = EXCLUDED.in_stock,
          updated_at = EXCLUDED.updated_at,
          search_vector = setweight(to_tsvector('english', coalesce(EXCLUDED.name, '')), 'A') ||
-                         setweight(to_tsvector('english', coalesce(EXCLUDED.description, '')), 'B')
+                         setweight(to_tsvector('english', coalesce(EXCLUDED.description, '')), 'B'),
+         rating = EXCLUDED.rating,
+         is_sponsored = EXCLUDED.is_sponsored,
+         merch_priority = EXCLUDED.merch_priority,
+         price_bucket = EXCLUDED.price_bucket,
+         sale_price = EXCLUDED.sale_price,
+         sale_start = EXCLUDED.sale_start,
+         sale_end = EXCLUDED.sale_end,
+         is_pinned = EXCLUDED.is_pinned,
+         pinned_rank = EXCLUDED.pinned_rank,
+         is_featured = EXCLUDED.is_featured
       `,
             [
                 product.product_id,
@@ -65,14 +86,21 @@ async function seedProducts() {
                 product.max_price,
                 embedding,
                 product.in_stock,
-                product.updated_at
+                product.updated_at,
+                // search_vector is generated in SQL
+                product.rating,
+                product.is_sponsored,
+                product.merch_priority,
+                product.price_bucket,
+                product.sale_price,
+                product.sale_start,
+                product.sale_end,
+                product.is_pinned,
+                product.pinned_rank,
+                product.is_featured
             ]
         );
     }
-    // Create GIN index for fast full-text search (if not exists)
-    // await pool.query(`
-    //   CREATE INDEX IF NOT EXISTS idx_products_search_vector ON products USING GIN (search_vector);
-    // `);
     console.log('Seeded products and updated search_vector successfully.');
 }
 
@@ -93,7 +121,7 @@ async function main() {
     try {
         // Then seed products via JS
         await seedProducts();
-        await seedFilters();
+        // await seedFilters();
         // Run SQL helpers first
         await runSqlFile(path.resolve('migrations/function-helpers.sql'));
         await runSqlFile(path.resolve('migrations/index.sql'));

@@ -13,7 +13,8 @@
     "migrate": "node scripts/migrate.js",
     "seed": "node scripts/seed.js",
     "reindex": "node scripts/reindex.js",
-    "func_helpers": "node seed/func_helpers.js"
+    "func_helpers": "node seed/func_helpers.js",
+    "category_synonyms": "node utils/category_synomys.js"
     
   },
   "type": "module",

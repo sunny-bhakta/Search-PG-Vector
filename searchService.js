@@ -1,11 +1,27 @@
 
 import { pool } from "./db.js";
 import embedText from "./embedText.js";
+import { expandQueryWithCategorySynonyms } from "./utils/category_synomys.js";
 
 // * http://localhost:3000/api/search?q=jeans&filters=brand:puma,minPrice:50,maxPrice:150,tags:denim|slim
 // Pagination: ?page=2&limit=10
 // Sorting: ?sort=price:asc or ?sort=blended_score:desc
-
+/**
+ * Example URLs for category and category_path filters:
+ * 
+ * By category:
+ *   /api/search?q=shoes&filters=category:sneakers
+ * 
+ * By category_path (for hierarchical categories):
+ *   /api/search?q=shoes&filters=category_paths:clothing/footwear/sneakers
+ * 
+ * Multiple filters can be combined using commas:
+ *   /api/search?q=shoes&filters=category:sneakers,brand:nike
+ *   /api/search?q=shoes&filters=category_paths:clothing/footwear/sneakers,brand:nike
+ * 
+ * For multiple category_paths (OR logic):
+ *   /api/search?q=shoes&filters=category_paths:clothing/footwear/sneakers|clothing/footwear/boots
+ */
 // Accepts: query, filters, options = { page, limit, sort }
 export async function searchWithFilters(query, filters, options = {}) {
     // console.log('Executing search with query:', query, 'and filters:', filters);
@@ -15,7 +31,25 @@ export async function searchWithFilters(query, filters, options = {}) {
     let filterParams = [];
     let whereClauses = [];
     let joinFilter = '';
-    let paramIndex = 3; // $1 = query, $2 = vector embedding
+    let paramIndex = 3; // $1 = tsQuery, $2 = vector embedding
+
+    // Extract leaf category from filters (category_paths or category)
+    let leafCategory = null;
+    const categoryPathsObj = filters?.find(f => f.name === 'category_paths');
+    if (categoryPathsObj?.value) {
+        const catPath = Array.isArray(categoryPathsObj.value) ? categoryPathsObj.value[0] : categoryPathsObj.value;
+        leafCategory = catPath.split('/').pop();
+    } else {
+        const categoryObj = filters?.find(f => f.name === 'category');
+        if (categoryObj?.value) leafCategory = categoryObj.value;
+    }
+
+    // Expand query with category synonyms
+    let expandedQueries = [query];
+    if (leafCategory) {
+        expandedQueries = await expandQueryWithCategorySynonyms(query, leafCategory);
+    }
+    const tsQuery = expandedQueries.join(' | ');
 
     // Pagination & Sorting defaults
     const page = Math.max(1, parseInt(options.page) || 1);
@@ -139,6 +173,7 @@ export async function searchWithFilters(query, filters, options = {}) {
         // -------------------------
         // Main Search Query
         // -------------------------
+
         const sql = `
             WITH 
             ft AS (
@@ -160,9 +195,39 @@ export async function searchWithFilters(query, filters, options = {}) {
                 p.min_price,
                 p.max_price,
                 p.tags,
+                p.in_stock,
+                p.rating,
+                p.is_sponsored,
+                p.merch_priority,
+                p.price_bucket,
+                p.sale_price,
+                p.sale_start,
+                p.sale_end,
+                p.is_pinned,
+                p.pinned_rank,
+                p.is_featured,
+                CASE
+                WHEN p.sale_price IS NOT NULL
+                    AND NOW() >= p.sale_start
+                    AND NOW() <= p.sale_end
+                THEN p.sale_price
+                ELSE p.min_price
+                END AS display_price,
                 COALESCE(ft.lexical_score, 0) * 0.4 +
                 COALESCE(trgm.trigram_score, 0) * 0.2 +
-                COALESCE(semantic.semantic_score, 0) * 0.4 AS blended_score
+                COALESCE(semantic.semantic_score, 0) * 0.4
+                + (CASE WHEN p.in_stock THEN 0.1 ELSE 0 END)
+                + (COALESCE(p.rating, 0) * 0.05)
+                + (CASE WHEN p.is_sponsored THEN 0.2 ELSE 0 END)
+                + (COALESCE(p.merch_priority, 0) * 0.1)
+                + (CASE WHEN p.is_featured THEN 0.3 ELSE 0 END)
+                + (CASE
+                    WHEN p.price_bucket = 'low' THEN 0.02
+                    WHEN p.price_bucket = 'mid' THEN 0.05
+                    WHEN p.price_bucket = 'high' THEN 0.01
+                    ELSE 0
+                END)
+                AS blended_score
             FROM products p
             LEFT JOIN ft ON p.id = ft.id
             LEFT JOIN trgm ON p.id = trgm.id
@@ -173,7 +238,11 @@ export async function searchWithFilters(query, filters, options = {}) {
                 OR trgm.id IS NOT NULL 
                 OR semantic.id IS NOT NULL)
                 ${whereClauses.length ? 'AND ' + whereClauses.join(' AND ') : ''}
-            ORDER BY ${sortField} ${sortDir}
+            ORDER BY
+                p.is_pinned DESC,
+                p.pinned_rank ASC NULLS LAST,
+                blended_score DESC,
+                ${sortField} ${sortDir}
             LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
         `;
         filterParams.push(limit, offset);
@@ -186,7 +255,8 @@ export async function searchWithFilters(query, filters, options = {}) {
             ? `[${vectArr.join(',')}]`
             : vectArr;
 
-    const finalParams = [query, vectEmb, ...filterParams];
+        // Use tsQuery as the first param
+        const finalParams = [tsQuery, vectEmb, ...filterParams];
 
         // Debug safety (optional)
         // console.log(sql);
@@ -350,7 +420,6 @@ export async function getFacetsWithFilters(query, filters) {
         client.release();
     }
 }
-
 
 export async function getAutocompleteSuggestions(query, filters) {
     // Autocomplete with filters (brand, minPrice, maxPrice, tags, facets)

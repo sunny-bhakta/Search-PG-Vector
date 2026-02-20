@@ -1,69 +1,33 @@
-
-# Search To-Do List
-
-
 ## Features & Enhancements
-- [ ] Spell correction
-- [ ] Synonyms dictionary
-- [ ] Multi-language search
-- [ ] Personalized ranking
-- [ ] A/B testing search relevance
-- [ ] Designed ranking and relevance system
+
+### Completed
+- [x] Spell correction
+- [x] Synonyms dictionary
+- [x] Personalized ranking
+- [x] Designed ranking and relevance system
 - [x] Hybrid score fusion query
 - [x] Filter + sort query
-- [ ] Autocomplete query
+- [x] Autocomplete query
 - [x] Full-text ranking query
-- [ ] Business Ranking Layer
+- [x] Business Ranking Layer
 - [x] In-stock boost
-- [ ] Rating boost
-- [ ] Price buckets
-- [ ] Sponsored products
-- [ ] EXPLAIN ANALYZE → Raw SQL
+- [x] Rating boost
+- [x] Price buckets
+- [x] Sponsored products
 - [x] Faceting
-- [ ] Query expansion
 - [x] If zero results → trigram fallback
-- [ ] Suggest “Did you mean…"
 - [x] tsvector → keyword relevance
 - [x] pgvector → semantic meaning
 - [x] pg_trgm → typo tolerance
-- [ ] Category-based synonyms
-- [ ] AI-generated synonyms
-- [ ] Search analytics → auto-suggest synonyms
-- [ ] Weighted synonym boosting
-- [ ] Relevance tuning strategy
-- [ ] How to make this portfolio-worthy
-- [ ] ANN search
+- [x] Weighted synonym boosting
 - [x] Filters (price, stock, brand)
-- [ ] Sale pricing
-- [ ] Full sync worker from primary DB
+- [x] Sale pricing
 - [x] Better vector + hybrid ranking
-- [ ] Pagination + sorting  ⬅️ **Next to pick**
-- [ ] Ranking logic
-- [ ] Business boosts
-- [ ] Transactions
-- [ ] Merchandise
-- [ ] Add read replicas
-- [ ] Tune HNSW
-- [ ] Partition
-- [ ] Consider external vector DB
-
-## Achievements
-- ✔️ Search works like a real ecommerce system
-- ✔️ Supports categories + subcategories
-- ✔️ Supports variants (color/size/price/stock)
-- ✔️ Filters, ranking, facets
-- ✔️ Works without Elasticsearch
-- ✔️ Easy to migrate to ES later
-
-## Next Steps (I can provide)
-If you want, I can generate:
-1. Full SQL migration script
-2. Node + Express search endpoint
-3. Indexing worker (queue-based)
-4. Query builder for filters
-
----
-## Already Implemented
+- [x] Pagination + sorting
+- [x] Ranking logic
+- [x] Business boosts
+- [x] Transactions
+- [x] Merchandise
 - [x] Basic search with text similarity (pg_trgm, similarity(name, $1))
 - [x] Faceted filtering (attribute filters via /search?filters=...)
 - [x] In-stock filtering
@@ -83,25 +47,30 @@ If you want, I can generate:
   Enables typo tolerance, stemming, and better ranking.
 - [x] Faceting with Counts  
   Return counts for each filter (e.g., color, size) for faceted navigation.
-
-
-## High-Impact Features to Implement Next
-- [ ] Pagination & Sorting  ⬅️ **Next to pick**
+- [x] Pagination & Sorting  
   Add support for page, limit, and sort query params.
-- [ ] Autocomplete Query
+- [x] Autocomplete Query  
   Implement a `/autocomplete` endpoint using ILIKE and similarity.
-- [ ] Business Ranking Layer
+- [x] Business Ranking  
   Add boosts for in-stock, rating, price buckets, sponsored products, etc.
+
+### Incomplete
+- [ ] Multi-language search
+- [ ] A/B testing search relevance
+- [ ] EXPLAIN ANALYZE → Raw SQL
+- [ ] Category-based synonyms
+- [ ] AI-generated synonyms
+- [ ] Search analytics → auto-suggest synonyms
+- [ ] Relevance tuning strategy
+- [ ] How to make this portfolio-worthy
+- [ ] ANN search
+- [ ] Full sync worker from primary DB
+- [ ] Add read replicas
+- [ ] Tune HNSW
+- [ ] Partition
+- [ ] Consider external vector DB
 - [ ] Query Expansion / “Did you mean…”
   Suggest alternative queries if results are low.
-- [ ] Search Analytics
   Track queries and clicks for future improvements.
-
-## Quick Wins
-- [ ] Add ORDER BY options (price, newest, etc.).
-- [ ] Add OFFSET for pagination.
+- [ ] Add ORDER BY options (price, newest, etc.)
 - [ ] Add tsvector-based search for better full-text support.
-- [ ] Add a /facets endpoint for filter counts.
-
-Would you like a step-by-step plan or code for this feature? Let me know your priority!
-

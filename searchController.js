@@ -1,8 +1,9 @@
 import express from 'express';
 import { searchWithFilters, getFacetsWithFilters, getAutocompleteSuggestions } from './searchService.js';
+import { seedCategorySynonyms } from './utils/category_synomys.js';
 
 const router = express.Router();
-
+// console.log(seedCategorySynonyms())
 /**
  * Search endpoint
  * Query params:
