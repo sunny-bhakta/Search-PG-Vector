@@ -2,6 +2,7 @@
 import { pool } from "./db.js";
 import embedText from "./embedText.js";
 import { expandQueryWithCategorySynonyms } from "./utils/category_synomys.js";
+import { correctSpelling } from "./utils/spellSuggest.js";
 
 // * http://localhost:3000/api/search?q=jeans&filters=brand:puma,minPrice:50,maxPrice:150,tags:denim|slim
 // Pagination: ?page=2&limit=10
@@ -192,20 +193,6 @@ export async function searchWithFilters(query, filters, options = {}) {
                 p.id,
                 p.name,
                 p.brand,
-                p.min_price,
-                p.max_price,
-                p.tags,
-                p.in_stock,
-                p.rating,
-                p.is_sponsored,
-                p.merch_priority,
-                p.price_bucket,
-                p.sale_price,
-                p.sale_start,
-                p.sale_end,
-                p.is_pinned,
-                p.pinned_rank,
-                p.is_featured,
                 CASE
                 WHEN p.sale_price IS NOT NULL
                     AND NOW() >= p.sale_start
@@ -264,9 +251,20 @@ export async function searchWithFilters(query, filters, options = {}) {
 
         const { rows } = await client.query(sql, finalParams);
 
-        await client.query("COMMIT");
-        return rows;
+        console.log('Search results count:', rows.length);
+        // If results found, return as usual
+        if (rows && rows.length > 0) {
+            return { results: rows };
+        }
 
+        // If no results, try spell correction
+        const suggestion = await correctSpelling(query);
+        if (suggestion && suggestion !== query) {
+            return { results: [], didYouMean: suggestion };
+        }
+        await client.query("COMMIT");
+        // No suggestion found
+        return { results: [], didYouMean: null };
     } catch (error) {
         await client.query("ROLLBACK");
         throw error;

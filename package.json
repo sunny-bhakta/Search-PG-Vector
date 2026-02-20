@@ -14,7 +14,8 @@
     "seed": "node scripts/seed.js",
     "reindex": "node scripts/reindex.js",
     "func_helpers": "node seed/func_helpers.js",
-    "category_synonyms": "node utils/category_synomys.js"
+    "category_synonyms": "node utils/category_synomys.js",
+    "seed_dictionary": "node utils/seedDictionary.js"
     
   },
   "type": "module",
