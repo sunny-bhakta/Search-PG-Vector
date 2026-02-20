@@ -245,26 +245,67 @@ export async function searchWithFilters(query, filters, options = {}) {
         // Use tsQuery as the first param
         const finalParams = [tsQuery, vectEmb, ...filterParams];
 
-        // Debug safety (optional)
-        // console.log(sql);
-        // console.log(finalParams);
+        // --- Pagination metadata ---
+        // Build count query for total results
+        const countSql = `
+            WITH 
+            ft AS (
+                SELECT id::uuid FROM search_lexical_fts($1, 1000)
+            ),
+            trgm AS (
+                SELECT id::uuid FROM search_lexical_trigram_similarity($1, 1000)
+            ),
+            semantic AS (
+                SELECT id::uuid FROM search_semantic_vector_similarity($2::vector, 1000)
+            )
+            SELECT COUNT(DISTINCT p.id) AS total
+            FROM products p
+            LEFT JOIN ft ON p.id = ft.id
+            LEFT JOIN trgm ON p.id = trgm.id
+            LEFT JOIN semantic ON p.id = semantic.id
+            ${joinFilter}
+            WHERE 
+                (ft.id IS NOT NULL 
+                OR trgm.id IS NOT NULL 
+                OR semantic.id IS NOT NULL)
+                ${whereClauses.length ? 'AND ' + whereClauses.join(' AND ') : ''}
+        `;
+        const countParams = [tsQuery, vectEmb, ...filterParams.slice(0, -2)];
+        const { rows: countRows } = await client.query(countSql, countParams);
+        const total = countRows[0]?.total ? parseInt(countRows[0].total, 10) : 0;
+        const totalPages = Math.ceil(total / limit);
+        const currentPage = page;
+        const nextPage = currentPage < totalPages ? currentPage + 1 : null;
+        const prevPage = currentPage > 1 ? currentPage - 1 : null;
 
         const { rows } = await client.query(sql, finalParams);
 
-        console.log('Search results count:', rows.length);
-        // If results found, return as usual
+        // If results found, return as usual with pagination info
         if (rows && rows.length > 0) {
-            return { results: rows };
+            await client.query("COMMIT");
+            return {
+                results: rows,
+                pagination: {
+                    total,
+                    totalPages,
+                    currentPage,
+                    nextPage,
+                    prevPage,
+                    pageSize: limit
+                }
+            };
         }
 
         // If no results, try spell correction
         const suggestion = await correctSpelling(query);
         if (suggestion && suggestion !== query) {
-            return { results: [], didYouMean: suggestion };
+            await client.query("COMMIT");
+            return { results: [], didYouMean: suggestion, pagination: { total: 0, totalPages: 0, currentPage: page, nextPage: null, prevPage: page > 1 ? page - 1 : null, pageSize: limit } };
         }
         await client.query("COMMIT");
         // No suggestion found
-        return { results: [], didYouMean: null };
+        return { results: [], didYouMean: null, pagination: { total: 0, totalPages: 0, currentPage: page, nextPage: null, prevPage: page > 1 ? page - 1 : null, pageSize: limit } };
+
     } catch (error) {
         await client.query("ROLLBACK");
         throw error;
