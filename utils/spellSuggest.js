@@ -1,4 +1,3 @@
-// utils/spellSuggest.js
 // Simple spell suggestion using pg_trgm and a dictionary table
 import { pool } from '../db.js';
 

@@ -1,91 +1,71 @@
-# Search PG Vector
+# Search-PG-Vector
 
-Search PG Vector is a product discovery service that blends lexical search, semantic similarity (via pgvector), and Elasticsearch-style relevance boosts. The service exposes REST APIs for keyword search and autocomplete, plus a background pipeline for indexing and reindexing product data.
-
-## Features
-
-- **Hybrid relevance** – lexical, semantic, and custom boosters combined in one scoring pipeline.
-- **Pgvector embeddings** – store and query product embeddings directly in Postgres.
-- **Elasticsearch optionality** – use Elasticsearch as a secondary index for advanced ranking/analytics.
-- **Event-driven pipeline** – workers respond to product update events and keep the search index in sync.
-- **Operational tooling** – database seed and reindex scripts, metrics hooks, and logging utilities.
+A simple project demonstrating semantic search using PostgreSQL with the pgvector extension.
 
 ## Getting Started
 
-### Prerequisites
+1. **Clone the repository:**
+    ```bash
+    git clone https://github.com/your-username/Search-PG-Vector.git
+    cd Search-PG-Vector
+    ```
 
-- Node.js 18.18+ and npm 9+
-- PostgreSQL 15+ with the `pgvector` extension installed
-- (Optional) Elasticsearch 8+
+2. **Install dependencies:**
+    ```bash
+    npm install
+    # or
+    yarn install
+    ```
 
-### Installation
+3. **Configure your database:**
+    - Ensure PostgreSQL is running with the `pgvector` extension enabled.
+    - Update the `.env` file with your database credentials.
 
-```bash
-npm install
-```
+4. **Run the project:**
+    ```bash
+    npm start
+    # or
+    yarn start
+    ```
+    ## Supported Endpoints
 
-Create a `.env` file by copying `.env.example` and updating the values for your environment.
+    ### Search Endpoint
 
-### Database
+    `GET /api/search`
 
-1. Enable `pgvector` inside your database:
-   ```sql
-   CREATE EXTENSION IF NOT EXISTS vector;
-   ```
-2. Run the initial migration:
-   ```bash
-   psql "$DATABASE_URL" -f migrations/20260209-init-search.sql
-   ```
-3. Seed with demo data:
-   ```bash
-   npm run seed
-   ```
+    #### Query Parameters
 
-### Running the API
+    - `q` (string): Search query (e.g., `jeans`).
+    - `filters` (string): Comma-separated filters.  
+        - Examples:  
+            - `brand:puma`
+            - `minPrice:50`
+            - `maxPrice:150`
+            - `tags:denim|slim` (multiple tags with OR logic)
+            - `category:sneakers`
+            - `category_paths:clothing/footwear/sneakers`
+            - Combine filters: `category:sneakers,brand:nike`
+            - Multiple category paths (OR logic): `category_paths:clothing/footwear/sneakers|clothing/footwear/boots`
+    - `page` (number): Page number for pagination (e.g., `2`).
+    - `limit` (number): Number of results per page (e.g., `10`).
+    - `sort` (string): Sorting field and order.  
+        - Examples:  
+            - `price:asc`
+            - `blended_score:desc`
 
-```bash
-npm run dev
-```
+    #### Example Requests
 
-This will start the Express server with hot reloading via Nodemon. To run it in production mode, use `npm start`.
+    ```http
+    GET http://localhost:3000/api/search?q=jeans&filters=brand:puma,minPrice:50,maxPrice:150,tags:denim|slim
+    GET http://localhost:3000/api/search?q=shoes&filters=category:sneakers
+    GET http://localhost:3000/api/search?q=shoes&filters=category_paths:clothing/footwear/sneakers
+    GET http://localhost:3000/api/search?q=shoes&filters=category:sneakers,brand:nike
+    GET http://localhost:3000/api/search?q=shoes&filters=category_paths:clothing/footwear/sneakers|clothing/footwear/boots
+    GET http://localhost:3000/api/search?q=jeans&page=2&limit=10&sort=price:asc
+    ```
+ 
+5. **Reference docs:** 
+    - [Basic](docs/concepts.md)
+    - [Implementaion Flow](docs/topics.md)
 
-### Testing
-
-```bash
-npm test
-```
-
-The Jest test suite covers services, boosters, and API endpoints. Integration tests rely on the Express app but mock external systems (database, Elasticsearch) by default.
-
-## Project Structure
-
-```
-search-pg-vector/
-├── config/             # Environment-aware settings consumed via the `config` package
-├── docs/               # Architecture notes and API contracts
-├── scripts/            # Operational utilities (seed, reindex)
-├── src/                # Application source grouped by domain
-├── tests/              # Unit, integration, and e2e suites
-├── migrations/         # SQL migrations for Postgres
-└── Dockerfile          # Production build instructions
-```
-
-## Configuration
-
-Key settings live in `config/default.json` and `config/production.json`. Override any value via environment variables; see `docs/architecture.md` for details.
-
-## Deployment
-
-A multi-stage Dockerfile is provided. Build it with:
-
-```bash
-docker build -t search-pg-vector .
-```
-
-Expose port `4000` (or whatever `PORT` you set) and supply environment variables at runtime.
-
-## Next Steps
-
-- Wire the pipeline to your message bus (Kafka, SNS/SQS, etc.).
-- Swap out the mocked embedding generator with your model of choice.
-- Integrate real monitoring/telemetry (Prometheus, OpenTelemetry, etc.).
+ 
